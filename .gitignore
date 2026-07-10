@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Xcode
+*.xcuserstate
+*.xcworkspace
+xcuserdata/
+DerivedData/
+
+# App config secrets
+BrujitaBuenaApp/app items/Config.plist
+BrujitaBuenaApp/app items/GoogleService-Info.plist
+
+# Node / build
+node_modules/
+dist/
