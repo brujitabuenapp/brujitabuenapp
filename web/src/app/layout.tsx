@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Brujita Buena",
-  description: "Una app web para sanar, pedir guía y conectar con brujas",
+  title: "Brujita Buena 1.0",
+  description: "Tu guía mágica para sanar, elegir y sentirse acompañada.",
 };
 
 export default function RootLayout({
@@ -23,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full bg-[#fffaf6] text-slate-800">{children}</body>
+    <html lang="es" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <body suppressHydrationWarning className="min-h-full bg-[#fffaf6] text-slate-800">{children}</body>
     </html>
   );
 }
