@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-type ViewMode = "home" | "profile";
-
 type Profile = {
   id: string;
   name: string;
   specialities: string[];
+  isBrujita: boolean;
+  cureSpecialities: string[];
 };
 
 const problems = [
@@ -30,7 +30,6 @@ const guides = [
 const STORAGE_KEY = "brujita-buena-profiles";
 
 export function BrujaApp() {
-  const [view, setView] = useState<ViewMode>("home");
   const [selectedProblem, setSelectedProblem] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [guide, setGuide] = useState("Sabrina");
@@ -42,15 +41,25 @@ export function BrujaApp() {
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [newProfileName, setNewProfileName] = useState("");
   const [newProfileSpecialities, setNewProfileSpecialities] = useState<string[]>([]);
+  const [newProfileIsBrujita, setNewProfileIsBrujita] = useState(false);
+  const [newProfileCureSpecialities, setNewProfileCureSpecialities] = useState<string[]>([]);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved) as Profile[];
-        if (parsed.length > 0) {
-          setProfiles(parsed);
-          setActiveProfileId(parsed[0].id);
+        const parsed = JSON.parse(saved) as Partial<Profile>[];
+        const normalizedProfiles = parsed.map((profile) => ({
+          id: profile.id || `profile-${Date.now()}`,
+          name: profile.name || "Mi perfil",
+          specialities: profile.specialities || [],
+          isBrujita: Boolean(profile.isBrujita),
+          cureSpecialities: profile.cureSpecialities || [],
+        }));
+
+        if (normalizedProfiles.length > 0) {
+          setProfiles(normalizedProfiles);
+          setActiveProfileId(normalizedProfiles[0].id);
         }
       } catch {
         setProfiles([]);
@@ -72,8 +81,91 @@ export function BrujaApp() {
     return problems.filter((problem) => problem.name.toLowerCase().includes(term) || problem.description.toLowerCase().includes(term));
   }, [searchTerm]);
 
+  const libraryCards = useMemo(() => {
+    if (!selectedProblem) return [];
+
+    return [
+      {
+        title: `Curación con Sabrina`,
+        description: `Una guía cálida para ${selectedProblem.toLowerCase()} con preguntas suaves y rituales simbólicos.`,
+        tag: "IA",
+        kind: "ia" as const,
+        actionLabel: "Hablar con Sabrina",
+      },
+      {
+        title: `Ritual de luz`,
+        description: `Te guiamos con una práctica breve y simbólica para bajar la carga emocional y volver a sentirte más liviano.`,
+        tag: "Ritual",
+        kind: "ritual" as const,
+        actionLabel: "Probar ritual",
+      },
+      {
+        title: `Brujo/a real`,
+        description: `También podés elegir una guía humana para acompañarte con ${selectedProblem.toLowerCase()} y seguir adelante.`,
+        tag: "Real",
+        kind: "real" as const,
+        actionLabel: "Ver brujos reales",
+      },
+    ];
+  }, [selectedProblem]);
+
+  const recommendedResources = useMemo(() => {
+    if (!selectedProblem) return [];
+
+    const normalized = selectedProblem.toLowerCase();
+
+    if (normalized.includes("empacho") || normalized.includes("panza") || normalized.includes("vientre") || normalized.includes("estómago")) {
+      return [
+        {
+          type: "Curación",
+          title: "Empacho: una curación sencilla",
+          description: "Te guiamos con una propuesta suave, simbólica y acompañada para bajar la sensación de pesadez.",
+        },
+        {
+          type: "Documento",
+          title: "Guía de cuidados digestivos",
+          description: "Un mini documento con hábitos, respiración y calma para el cuerpo.",
+        },
+        {
+          type: "Blog",
+          title: "Qué hacer cuando te duele la panza",
+          description: "Un relato breve con recomendaciones suaves y esperanzadoras.",
+        },
+        {
+          type: "Video",
+          title: "Ritual de alivio y descanso",
+          description: "Un video breve para detenerte, respirar y sentirte más liviano.",
+        },
+      ];
+    }
+
+    return [
+      {
+        type: "Documento",
+        title: `Guía para ${selectedProblem.toLowerCase()}`,
+        description: "Un mini recurso para acompañarte en esta etapa con calma y claridad.",
+      },
+      {
+        type: "Blog",
+        title: `Qué suele ayudar con ${selectedProblem.toLowerCase()}`,
+        description: "Ideas cortas, suaves y fáciles de llevar a la práctica.",
+      },
+      {
+        type: "Video",
+        title: `Ritual breve para ${selectedProblem.toLowerCase()}`,
+        description: "Una pequeña guía visual para bajar la carga y seguir adelante.",
+      },
+    ];
+  }, [selectedProblem]);
+
   const toggleSpeciality = (problem: string) => {
     setNewProfileSpecialities((current) =>
+      current.includes(problem) ? current.filter((value) => value !== problem) : [...current, problem]
+    );
+  };
+
+  const toggleCureSpeciality = (problem: string) => {
+    setNewProfileCureSpecialities((current) =>
       current.includes(problem) ? current.filter((value) => value !== problem) : [...current, problem]
     );
   };
@@ -86,6 +178,12 @@ export function BrujaApp() {
       id: `profile-${Date.now()}`,
       name,
       specialities: newProfileSpecialities.length > 0 ? newProfileSpecialities : ["Amor", "Trabajo", "Salud"],
+      isBrujita: newProfileIsBrujita,
+      cureSpecialities: newProfileIsBrujita
+        ? newProfileCureSpecialities.length > 0
+          ? newProfileCureSpecialities
+          : ["Ansiedad", "Mala energía"]
+        : [],
     };
 
     const updated = [newProfile, ...profiles];
@@ -93,7 +191,23 @@ export function BrujaApp() {
     setActiveProfileId(newProfile.id);
     setNewProfileName("");
     setNewProfileSpecialities([]);
-    setView("profile");
+    setNewProfileIsBrujita(false);
+    setNewProfileCureSpecialities([]);
+  };
+
+  const handleLibrarySelection = (kind: "ia" | "ritual" | "real") => {
+    if (kind === "real") {
+      setGuide("Dumbly");
+      setResponse(`Perfecto, vamos a mirar una guía humana para ${selectedProblem ?? "tu tema"}.`);
+      return;
+    }
+
+    setGuide("Sabrina");
+    setResponse(
+      kind === "ritual"
+        ? `Sabrina te prepara un ritual simbólico para ${selectedProblem ?? "tu tema"}.`
+        : `Sabrina está lista para acompañarte con ${selectedProblem ?? "tu tema"}.`
+    );
   };
 
   const handleHealing = async () => {
@@ -153,12 +267,12 @@ export function BrujaApp() {
               </p>
             </div>
             <div className="flex gap-2 rounded-full border border-slate-200 bg-slate-50 p-1">
-              <button onClick={() => setView("home")} className={`rounded-full px-4 py-2 text-sm font-semibold transition ${view === "home" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"}`}>
+              <Link href="/" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white hover:text-slate-900">
                 Inicio
-              </button>
-              <button onClick={() => setView("profile")} className={`rounded-full px-4 py-2 text-sm font-semibold transition ${view === "profile" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"}`}>
+              </Link>
+              <Link href="/perfil" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white hover:text-slate-900">
                 Mi perfil
-              </button>
+              </Link>
             </div>
           </div>
         </section>
@@ -218,165 +332,140 @@ export function BrujaApp() {
           </div>
         </section>
 
-        {view === "home" ? (
-          <>
-            <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-sky-600">Males</p>
-                    <h2 className="text-2xl font-bold">Elegí el tema que te acompaña</h2>
-                  </div>
-                  <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">{selectedProblem ?? "Sin elegir"}</div>
-                </div>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  {filteredProblems.map((problem) => (
-                    <button
-                      key={problem.name}
-                      type="button"
-                      onClick={() => setSelectedProblem(problem.name)}
-                      className={`rounded-[22px] border p-4 text-left transition ${selectedProblem === problem.name ? "border-fuchsia-500 bg-fuchsia-50 shadow-sm" : "border-slate-200 bg-white hover:border-fuchsia-200 hover:bg-fuchsia-50"}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-lg font-semibold">{problem.name}</p>
-                          <p className="mt-2 text-sm text-slate-600">{problem.description}</p>
-                        </div>
-                        <div className="text-2xl">{problem.icon}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-fuchsia-600">Guías</p>
-                    <h2 className="text-2xl font-bold">¿Quién querés que te acompañe?</h2>
-                  </div>
-                </div>
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  {guides.map((item) => (
-                    <button
-                      key={item.name}
-                      onClick={() => setGuide(item.name)}
-                      className={`rounded-[22px] border p-4 text-left transition ${guide === item.name ? "border-fuchsia-500 bg-fuchsia-50" : "border-slate-200 hover:border-fuchsia-200"}`}
-                    >
-                      <div className={`rounded-2xl bg-gradient-to-br ${item.accent} p-3 text-white`}>
-                        <p className="text-lg font-semibold">{item.name}</p>
-                        <p className="text-sm opacity-90">{item.tone}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
-              <h2 className="text-2xl font-bold">Curación con {guide}</h2>
-              <div className="mt-3 rounded-2xl border border-fuchsia-100 bg-fuchsia-50/70 p-4 text-sm text-slate-600">
-                {activeProfile
-                  ? `Perfil activo: ${activeProfile.name} · Tema: ${selectedProblem ?? "sin seleccionar"}`
-                  : "Seleccioná o creá un perfil personal para que Sabrina te conozca mejor."}
-              </div>
-              <textarea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                placeholder="Contame qué te pasa y qué necesitas recibir..."
-                className="mt-4 min-h-28 w-full rounded-[22px] border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-100"
-              />
-              <button
-                onClick={handleHealing}
-                disabled={loading || !input.trim() || !selectedProblem || !activeProfile}
-                className="mt-4 w-full rounded-2xl bg-fuchsia-600 px-4 py-3 font-semibold text-white transition hover:bg-fuchsia-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                {loading ? "Consultando..." : "Pedir curación"}
-              </button>
-              <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                {response}
-              </div>
-            </section>
-          </>
-        ) : (
-          <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <>
+          <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
             <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-fuchsia-600">Perfil</p>
-                  <h2 className="text-2xl font-bold">Tu espacio personal</h2>
+                  <p className="text-sm font-semibold text-sky-600">Tema</p>
+                  <h2 className="text-2xl font-bold">Elegí el tema que te acompaña</h2>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-purple-600 text-xl text-white shadow-lg">✨</div>
+                <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">{selectedProblem ?? "Sin elegir"}</div>
               </div>
 
-              <div className="mt-6 rounded-[24px] border border-fuchsia-100 bg-fuchsia-50/70 p-4">
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {filteredProblems.map((problem) => (
+                  <button
+                    key={problem.name}
+                    type="button"
+                    onClick={() => setSelectedProblem(problem.name)}
+                    className={`rounded-[22px] border p-4 text-left transition ${selectedProblem === problem.name ? "border-fuchsia-500 bg-fuchsia-50 shadow-sm" : "border-slate-200 bg-white hover:border-fuchsia-200 hover:bg-fuchsia-50"}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-lg font-semibold">{problem.name}</p>
+                        <p className="mt-2 text-sm text-slate-600">{problem.description}</p>
+                      </div>
+                      <div className="text-2xl">{problem.icon}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-fuchsia-600">Tu perfil</p>
+                  <h2 className="text-2xl font-bold">Tu espacio personal</h2>
+                </div>
+                <Link href="/perfil" className="rounded-full bg-fuchsia-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-fuchsia-700">
+                  Abrir perfil
+                </Link>
+              </div>
+              <div className="mt-4 rounded-[24px] border border-fuchsia-100 bg-fuchsia-50/70 p-4">
                 {activeProfile ? (
                   <div className="space-y-2">
                     <p className="text-lg font-semibold text-fuchsia-700">{activeProfile.name}</p>
+                    <p className="text-sm text-slate-600">{activeProfile.isBrujita ? "Brujita/o" : "Usuario/a"}</p>
                     <p className="text-sm text-slate-600">Especialidades: {activeProfile.specialities.join(", ")}</p>
-                    <p className="text-sm text-slate-600">Listo para recibir apoyo, claridad y una guía mágica cuando la necesites.</p>
+                    {activeProfile.isBrujita && activeProfile.cureSpecialities.length > 0 ? (
+                      <p className="text-sm text-slate-600">Sabe curar: {activeProfile.cureSpecialities.join(", ")}</p>
+                    ) : null}
                   </div>
                 ) : (
                   <p className="text-sm text-slate-600">Creá un perfil para que la experiencia sea más personal y cálida.</p>
                 )}
               </div>
-
-              {profiles.length > 0 ? (
-                <div className="mt-6 space-y-3">
-                  {profiles.map((profile) => (
-                    <button
-                      key={profile.id}
-                      onClick={() => setActiveProfileId(profile.id)}
-                      className={`w-full rounded-2xl border px-4 py-4 text-left transition ${activeProfileId === profile.id ? "border-fuchsia-500 bg-fuchsia-50 text-fuchsia-700" : "border-slate-200 bg-white hover:border-fuchsia-200 hover:bg-fuchsia-50"}`}
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-base font-semibold">{profile.name}</p>
-                          <p className="mt-1 text-sm text-slate-600">{profile.specialities.join(", ")}</p>
-                        </div>
-                        {activeProfileId === profile.id ? <span className="rounded-full bg-fuchsia-600 px-3 py-1 text-xs font-semibold text-white">Activo</span> : null}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-6 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Todavía no hay perfiles guardados. Creá el primero para empezar.</div>
-              )}
-            </div>
-
-            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
-              <h2 className="text-2xl font-bold">Crear nuevo perfil</h2>
-              <input
-                value={newProfileName}
-                onChange={(event) => setNewProfileName(event.target.value)}
-                placeholder="Nombre del perfil"
-                className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-100"
-              />
-              <p className="mt-4 text-sm text-slate-600">Elegí los temas que querés que acompañen este perfil.</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {problems.map((problem) => (
-                  <button
-                    key={problem.name}
-                    type="button"
-                    onClick={() => toggleSpeciality(problem.name)}
-                    className={`rounded-2xl border px-3 py-3 text-left text-sm transition ${newProfileSpecialities.includes(problem.name) ? "border-fuchsia-500 bg-fuchsia-50 text-fuchsia-700" : "border-slate-200 bg-white hover:border-fuchsia-200 hover:bg-fuchsia-50"}`}
-                  >
-                    <span className="mr-2">{problem.icon}</span>
-                    {problem.name}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={handleAddProfile}
-                className="mt-5 w-full rounded-2xl bg-fuchsia-600 px-4 py-3 font-semibold text-white transition hover:bg-fuchsia-700"
-              >
-                Guardar perfil
-              </button>
             </div>
           </section>
-        )}
+
+          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-fuchsia-600">Biblioteca de curaciones</p>
+                <h2 className="text-2xl font-bold">Elegí cómo seguir cuando ya sabes qué te pasa</h2>
+              </div>
+              <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">{selectedProblem ? "Listo para acompañarte" : "Elegí un tema"}</div>
+            </div>
+
+            {!selectedProblem ? (
+              <div className="mt-5 rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
+                Elegí un tema en la parte de arriba para abrir la biblioteca de curaciones, brujos reales y rituales simbólicos.
+              </div>
+            ) : (
+              <>
+                <div className="mt-6 grid gap-4 lg:grid-cols-3">
+                  {libraryCards.map((item) => (
+                    <div key={item.title} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-fuchsia-700">{item.tag}</span>
+                        <span className="text-xs font-medium text-slate-500">{selectedProblem}</span>
+                      </div>
+                      <h3 className="mt-4 text-lg font-semibold text-slate-800">{item.title}</h3>
+                      <p className="mt-2 text-sm text-slate-600">{item.description}</p>
+                      <button
+                        type="button"
+                        onClick={() => handleLibrarySelection(item.kind)}
+                        className="mt-4 w-full rounded-2xl bg-fuchsia-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-700"
+                      >
+                        {item.actionLabel}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 rounded-[24px] border border-fuchsia-100 bg-fuchsia-50/70 p-4">
+                  <p className="text-sm font-semibold text-fuchsia-700">Recursos para seguir</p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {recommendedResources.map((resource) => (
+                      <div key={`${resource.type}-${resource.title}`} className="rounded-2xl border border-white bg-white p-4 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{resource.type}</p>
+                        <h4 className="mt-2 text-base font-semibold text-slate-800">{resource.title}</h4>
+                        <p className="mt-2 text-sm text-slate-600">{resource.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+
+          <section id="curacion" className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
+            <h2 className="text-2xl font-bold">Curación con {guide}</h2>
+            <div className="mt-3 rounded-2xl border border-fuchsia-100 bg-fuchsia-50/70 p-4 text-sm text-slate-600">
+              {activeProfile
+                ? `Perfil activo: ${activeProfile.name} · Tema: ${selectedProblem ?? "sin seleccionar"}`
+                : "Seleccioná o creá un perfil personal para que Sabrina te conozca mejor."}
+            </div>
+            <textarea
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder="Contame qué te pasa y qué necesitas recibir..."
+              className="mt-4 min-h-28 w-full rounded-[22px] border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-100"
+            />
+            <button
+              onClick={handleHealing}
+              disabled={loading || !input.trim() || !selectedProblem || !activeProfile}
+              className="mt-4 w-full rounded-2xl bg-fuchsia-600 px-4 py-3 font-semibold text-white transition hover:bg-fuchsia-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              {loading ? "Consultando..." : "Pedir curación"}
+            </button>
+            <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              {response}
+            </div>
+          </section>
+        </>
 
         <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_16px_50px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

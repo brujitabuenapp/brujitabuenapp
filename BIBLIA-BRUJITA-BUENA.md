@@ -148,10 +148,24 @@ No es solo una app de chat. Es una experiencia emocional que debe sentirse:
 - Se usará para generar respuestas cálidas y contextuales.
 - Debe hacerse desde un endpoint seguro del backend.
 - No se deben exponer claves en el cliente.
+- La clave debe cargarse en el entorno del servidor con la variable OPENAI_API_KEY.
 
 ### Comportamiento esperado
 - Sabrina: tono maternal, emocional, intuitivo.
 - Dumbly: tono más juguetón y claro.
+
+### Curación por IA
+- El usuario puede elegir un mal, una guía y escribir un mensaje.
+- El backend recibe el contexto del perfil activo y del problema elegido.
+- Si el perfil indica que la persona es brujita o brujito, se incluyen sus especialidades de curación.
+- La IA responde como una brujita buena, con ternura, preguntas suaves y sin diagnosticar enfermedades reales.
+- Si el usuario menciona síntomas físicos graves, la respuesta recomienda buscar atención médica.
+- Si no hay crédito o clave de IA disponible, se activa una respuesta local guiada con recursos recomendados, documentos, blogs y videos.
+
+### Flujo de curación recomendado
+- El usuario elige un tema como empacho o dolor de panza.
+- La app muestra una curación sugerida, un ritual simbólico y recursos recomendados.
+- El flujo permite seguir adelante aunque la IA externa no esté disponible.
 
 ## 9. Roadmap
 
